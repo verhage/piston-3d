@@ -1,8 +1,7 @@
-use std::ptr::null;
-use anyhow::{anyhow, Error, Result};
-use ash::vk::{PhysicalDevice, Queue, QueueFlags};
-use ash::{vk, Instance};
-use log::{error, info};
+use anyhow::{anyhow, Result};
+use ash::{Device, Instance, vk};
+use ash::vk::{DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, Queue, QueueFlags};
+use log::{info};
 use vk::PhysicalDeviceType;
 
 use crate::util::util::{vk_to_string, vk_version_to_string, yes_no};
@@ -37,6 +36,24 @@ pub fn select_physical_device(instance: &Instance) -> Result<PhysicalDevice> {
     }
 
     return Err(anyhow!("No suitable device with Vulkan support found"));
+}
+
+pub fn create_logical_device(instance: &Instance, physical_device: &PhysicalDevice) -> Result<(Device, Queue)> {
+    let queue_family_indices = find_queue_family(instance, physical_device);
+    let queue_priorities = [1.0f32];
+    let queue_create_info = DeviceQueueCreateInfo::builder()
+        .queue_family_index(queue_family_indices.graphics_family_index.unwrap())
+        .queue_priorities(&queue_priorities)
+        .build();
+    let physical_device_features = PhysicalDeviceFeatures::builder().build();
+    let device_create_info = DeviceCreateInfo::builder()
+        .queue_create_infos(&[queue_create_info])
+        .enabled_features(&physical_device_features)
+        .build();
+
+    let device = unsafe { instance.create_device(*physical_device, &device_create_info, None) }?;
+    let graphics_queue = unsafe { device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0) };
+    Ok((device, graphics_queue))
 }
 
 fn is_suitable_physical_device(instance: &Instance, physical_device: PhysicalDevice) -> bool {
