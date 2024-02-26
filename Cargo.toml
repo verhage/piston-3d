@@ -2,12 +2,15 @@
 name = "piston"
 version = "0.1.0"
 edition = "2021"
+authors = ["Rens Verhage <rensverhage@gmail.com>"]
 
 [dependencies]
 anyhow = "1.0.80"
 ash = { version = "0.37.3", features = ["debug"] }
 ash-window = "0.12.0"
 bytemuck = "1.14.3"
+env_logger = "0.11.2"
 gpu-allocator = "0.25.0"
+log = "0.4.20"
 raw-window-handle = "0.5"
 winit = "0.28.0"
