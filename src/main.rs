@@ -89,9 +89,11 @@ impl PistonApp {
 impl Drop for PistonApp {
     fn drop(&mut self) {
         unsafe {
+            if VALIDATION.is_enabled {
+                self.debug_utils_loader
+                    .destroy_debug_utils_messenger(self.debug_messenger, None);
+            }
             self.instance.destroy_instance(None);
-            self.debug_utils_loader
-                .destroy_debug_utils_messenger(self.debug_messenger, None);
         }
     }
 }
