@@ -1,7 +1,6 @@
 use anyhow::Result;
 use ash::extensions::ext::DebugUtils;
-use ash::extensions::khr::Surface;
-use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue, SurfaceKHR};
+use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue};
 use ash::{self, Device, Entry, Instance};
 use log::info;
 use winit::dpi::LogicalSize;
@@ -18,7 +17,7 @@ use piston::util::debug::create_debug_utils;
 use piston::util::util::vk_version_to_string;
 use piston::vulkan::device::{create_logical_device, select_physical_device};
 use piston::vulkan::instance::create_instance;
-use piston::vulkan::surface::create_surface;
+use piston::vulkan::surface::{create_surface, SurfaceWrapper};
 
 struct PistonApp {
     _entry: Entry,
@@ -26,8 +25,8 @@ struct PistonApp {
     _physical_device: PhysicalDevice,
     device: Device,
     _graphics_queue: Queue,
-    surface_loader: Surface,
-    surface: SurfaceKHR,
+    _present_queue: Queue,
+    surface_wrapper: SurfaceWrapper,
     debug_utils_loader: DebugUtils,
     debug_messenger: DebugUtilsMessengerEXT,
 }
@@ -36,9 +35,9 @@ impl PistonApp {
     fn create_with_window(window: &Window) -> Result<PistonApp> {
         let entry = unsafe { ash::Entry::load() }?;
         let instance = create_instance(&entry, &VALIDATION)?;
-        let physical_device = select_physical_device(&instance)?;
-        let (device, graphics_queue) = create_logical_device(&instance, &physical_device)?;
-        let (surface_loader, surface) = create_surface(&entry, &instance, &window)?;
+        let surface_wrapper = create_surface(&entry, &instance, &window)?;
+        let physical_device = select_physical_device(&instance, &surface_wrapper)?;
+        let (device, queues) = create_logical_device(&instance, physical_device, &surface_wrapper)?;
         let (debug_utils_loader, debug_messenger) =
             create_debug_utils(&entry, &instance, &VALIDATION)?;
 
@@ -47,9 +46,9 @@ impl PistonApp {
             instance,
             _physical_device: physical_device,
             device,
-            _graphics_queue: graphics_queue,
-            surface_loader,
-            surface,
+            _graphics_queue: queues.graphics_queue,
+            _present_queue: queues.present_queue,
+            surface_wrapper,
             debug_utils_loader,
             debug_messenger,
         })
@@ -117,7 +116,9 @@ impl Drop for PistonApp {
                     .destroy_debug_utils_messenger(self.debug_messenger, None);
             }
             self.device.destroy_device(None);
-            self.surface_loader.destroy_surface(self.surface, None);
+            self.surface_wrapper
+                .surface_loader
+                .destroy_surface(self.surface_wrapper.surface, None);
             self.instance.destroy_instance(None);
         }
     }

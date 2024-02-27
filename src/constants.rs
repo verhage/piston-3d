@@ -7,6 +7,8 @@ pub const APPLICATION_VERSION: u32 = make_api_version(0, 0, 1, 0);
 
 pub const VULKAN_API_VERSION: u32 = API_VERSION_1_2;
 
+pub const REQUIRED_EXTENSIONS: [&str; 1] = ["VK_KHR_swapchain"];
+
 pub const ENGINE_NAME: &str = "Piston";
 
 pub const WINDOW_TITLE: &str = APPLICATION_NAME;
