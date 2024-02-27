@@ -1,10 +1,10 @@
 use std::mem::transmute;
 
 use anyhow::Result;
-use ash::{Entry, Instance};
 use ash::extensions::ext::MetalSurface;
 use ash::extensions::khr::Surface;
 use ash::vk::{MetalSurfaceCreateInfoEXT, SurfaceKHR};
+use ash::{Entry, Instance};
 use cocoa::appkit::{NSView, NSWindow};
 use cocoa::base::id;
 use metal::foreign_types::ForeignTypeRef;

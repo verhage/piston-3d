@@ -1,8 +1,8 @@
-use anyhow::{Result};
-use ash::{self, Device, Entry, Instance};
+use anyhow::Result;
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
 use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue, SurfaceKHR};
+use ash::{self, Device, Entry, Instance};
 use log::info;
 use winit::dpi::LogicalSize;
 use winit::event::{ElementState, Event, KeyEvent, WindowEvent};
@@ -81,7 +81,7 @@ impl PistonApp {
                             logical_key: key,
                             state: ElementState::Pressed,
                             ..
-                    },
+                        },
                     ..
                 } => match key.as_ref() {
                     Key::Named(NamedKey::Escape) => {
@@ -89,13 +89,13 @@ impl PistonApp {
                         close_requested = true;
                     }
                     _ => {}
-                }
-                    WindowEvent::RedrawRequested => {
+                },
+                WindowEvent::RedrawRequested => {
                     window.pre_present_notify();
                     self.draw_frame();
                 }
                 _ => {}
-            }
+            },
             Event::AboutToWait => {
                 if redraw_requested && !close_requested {
                     window.request_redraw()
@@ -134,7 +134,6 @@ fn main() -> Result<()> {
     );
     let event_loop = EventLoop::new()?;
     let window = PistonApp::init_window(&event_loop);
-
     let piston_app = PistonApp::create_with_window(&window)?;
     piston_app.main_loop(event_loop, window)?;
     Ok(())

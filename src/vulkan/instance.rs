@@ -1,9 +1,9 @@
 use std::ffi::CString;
 
-use ash::{Entry, Instance, vk};
 use ash::extensions::ext::{DebugUtils, MetalSurface};
 use ash::extensions::khr::Surface;
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
+use ash::{vk, Entry, Instance};
 
 use crate::constants::{APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, VULKAN_API_VERSION};
 use crate::util::debug::ValidationInfo;
@@ -32,7 +32,7 @@ pub fn create_instance(
         KhrPortabilityEnumerationFn::name().as_ptr(),
         KhrGetPhysicalDeviceProperties2Fn::name().as_ptr(),
         MetalSurface::name().as_ptr(),
-        Surface::name().as_ptr()
+        Surface::name().as_ptr(),
     ];
 
     let mut layer_names: Vec<*const i8> = Vec::new();
