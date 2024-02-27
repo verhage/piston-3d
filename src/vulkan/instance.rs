@@ -1,10 +1,9 @@
 use std::ffi::CString;
 
-use ash::extensions::ext::DebugUtils;
+use ash::{Entry, Instance, vk};
+use ash::extensions::ext::{DebugUtils, MetalSurface};
+use ash::extensions::khr::Surface;
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
-use ash::{vk, Entry, Instance};
-use raw_window_handle::HasRawDisplayHandle;
-use winit::window::Window;
 
 use crate::constants::{APPLICATION_NAME, APPLICATION_VERSION, ENGINE_NAME, VULKAN_API_VERSION};
 use crate::util::debug::ValidationInfo;
@@ -12,7 +11,6 @@ use crate::util::util::vk_to_string;
 
 pub fn create_instance(
     entry: &Entry,
-    window: &Window,
     validation_info: &ValidationInfo,
 ) -> anyhow::Result<Instance> {
     if validation_info.is_enabled && !is_validation_layer_supported(entry, validation_info) {
@@ -29,13 +27,13 @@ pub fn create_instance(
 
     let create_flags = vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
 
-    let mut extension_names =
-        ash_window::enumerate_required_extensions(window.raw_display_handle())
-            .unwrap()
-            .to_vec();
-    extension_names.push(DebugUtils::name().as_ptr());
-    extension_names.push(KhrPortabilityEnumerationFn::name().as_ptr());
-    extension_names.push(KhrGetPhysicalDeviceProperties2Fn::name().as_ptr());
+    let extension_names = vec![
+        DebugUtils::name().as_ptr(),
+        KhrPortabilityEnumerationFn::name().as_ptr(),
+        KhrGetPhysicalDeviceProperties2Fn::name().as_ptr(),
+        MetalSurface::name().as_ptr(),
+        Surface::name().as_ptr()
+    ];
 
     let mut layer_names: Vec<*const i8> = Vec::new();
     if validation_info.is_enabled {

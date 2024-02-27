@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
-use ash::{Device, Instance, vk};
-use ash::vk::{DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, Queue, QueueFlags};
-use log::{info};
+use ash::vk::{
+    DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, Queue,
+    QueueFlags,
+};
+use ash::{vk, Device, Instance};
+use log::info;
 use vk::PhysicalDeviceType;
 
 use crate::util::util::{vk_to_string, vk_version_to_string, yes_no};
@@ -38,7 +41,10 @@ pub fn select_physical_device(instance: &Instance) -> Result<PhysicalDevice> {
     return Err(anyhow!("No suitable device with Vulkan support found"));
 }
 
-pub fn create_logical_device(instance: &Instance, physical_device: &PhysicalDevice) -> Result<(Device, Queue)> {
+pub fn create_logical_device(
+    instance: &Instance,
+    physical_device: &PhysicalDevice,
+) -> Result<(Device, Queue)> {
     let queue_family_indices = find_queue_family(instance, physical_device);
     let queue_priorities = [1.0f32];
     let queue_create_info = DeviceQueueCreateInfo::builder()
@@ -52,7 +58,8 @@ pub fn create_logical_device(instance: &Instance, physical_device: &PhysicalDevi
         .build();
 
     let device = unsafe { instance.create_device(*physical_device, &device_create_info, None) }?;
-    let graphics_queue = unsafe { device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0) };
+    let graphics_queue =
+        unsafe { device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0) };
     Ok((device, graphics_queue))
 }
 
@@ -108,7 +115,8 @@ fn is_suitable_physical_device(instance: &Instance, physical_device: PhysicalDev
 fn find_queue_family(instance: &Instance, physical_device: &PhysicalDevice) -> QueueFamilyIndices {
     let mut queue_family_indices = QueueFamilyIndices::new();
 
-    let queue_families = unsafe { instance.get_physical_device_queue_family_properties(*physical_device) };
+    let queue_families =
+        unsafe { instance.get_physical_device_queue_family_properties(*physical_device) };
 
     let mut index = 0;
     for queue_family in queue_families.iter() {

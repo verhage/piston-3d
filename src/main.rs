@@ -1,21 +1,24 @@
-use anyhow::Result;
-use ash::extensions::ext::DebugUtils;
-use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue};
+use anyhow::{Result};
 use ash::{self, Device, Entry, Instance};
+use ash::extensions::ext::DebugUtils;
+use ash::extensions::khr::Surface;
+use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue, SurfaceKHR};
 use log::info;
+use winit::dpi::LogicalSize;
+use winit::event::{ElementState, Event, KeyEvent, WindowEvent};
+use winit::event_loop::EventLoop;
+use winit::keyboard::{Key, NamedKey};
+use winit::window::{Window, WindowBuilder};
+
 use piston::constants::{
     APPLICATION_NAME, APPLICATION_VERSION, VALIDATION, VULKAN_API_VERSION, WINDOW_HEIGHT,
     WINDOW_TITLE, WINDOW_WIDTH,
 };
-use winit::dpi::LogicalSize;
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::{Window, WindowBuilder};
-
 use piston::util::debug::create_debug_utils;
 use piston::util::util::vk_version_to_string;
 use piston::vulkan::device::{create_logical_device, select_physical_device};
 use piston::vulkan::instance::create_instance;
+use piston::vulkan::surface::create_surface;
 
 struct PistonApp {
     _entry: Entry,
@@ -23,6 +26,8 @@ struct PistonApp {
     _physical_device: PhysicalDevice,
     device: Device,
     _graphics_queue: Queue,
+    surface_loader: Surface,
+    surface: SurfaceKHR,
     debug_utils_loader: DebugUtils,
     debug_messenger: DebugUtilsMessengerEXT,
 }
@@ -30,10 +35,10 @@ struct PistonApp {
 impl PistonApp {
     fn create_with_window(window: &Window) -> Result<PistonApp> {
         let entry = unsafe { ash::Entry::load() }?;
-        let instance = create_instance(&entry, window, &VALIDATION)?;
+        let instance = create_instance(&entry, &VALIDATION)?;
         let physical_device = select_physical_device(&instance)?;
         let (device, graphics_queue) = create_logical_device(&instance, &physical_device)?;
-
+        let (surface_loader, surface) = create_surface(&entry, &instance, &window)?;
         let (debug_utils_loader, debug_messenger) =
             create_debug_utils(&entry, &instance, &VALIDATION)?;
 
@@ -43,6 +48,8 @@ impl PistonApp {
             _physical_device: physical_device,
             device,
             _graphics_queue: graphics_queue,
+            surface_loader,
+            surface,
             debug_utils_loader,
             debug_messenger,
         })
@@ -58,36 +65,47 @@ impl PistonApp {
 
     fn draw_frame(&self) {}
 
-    fn main_loop(self, event_loop: EventLoop<()>, window: Window) {
-        event_loop.run(move |event, _window_target, control_flow| match event {
+    fn main_loop(self, event_loop: EventLoop<()>, window: Window) -> Result<()> {
+        let redraw_requested = false;
+        let mut close_requested = false;
+
+        Ok(event_loop.run(move |event, event_loop| match event {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
-                    info!("User closed window, terminating application");
-                    *control_flow = ControlFlow::Exit;
+                    info!("User closed window, terminating event loop");
+                    close_requested = true;
                 }
-                WindowEvent::KeyboardInput { input, .. } => match input {
-                    KeyboardInput {
-                        virtual_keycode,
-                        state,
-                        ..
-                    } => match (virtual_keycode, state) {
-                        (Some(VirtualKeyCode::Escape), ElementState::Pressed) => {
-                            info!("User pressed ESC, terminating application");
-                            *control_flow = ControlFlow::Exit;
-                        }
-                        _ => {}
+                WindowEvent::KeyboardInput {
+                    event:
+                        KeyEvent {
+                            logical_key: key,
+                            state: ElementState::Pressed,
+                            ..
                     },
-                },
+                    ..
+                } => match key.as_ref() {
+                    Key::Named(NamedKey::Escape) => {
+                        info!("User pressed ESC, terminating event loop");
+                        close_requested = true;
+                    }
+                    _ => {}
+                }
+                    WindowEvent::RedrawRequested => {
+                    window.pre_present_notify();
+                    self.draw_frame();
+                }
                 _ => {}
-            },
-            Event::MainEventsCleared => {
-                window.request_redraw();
             }
-            Event::RedrawRequested(_window_id) => {
-                self.draw_frame();
+            Event::AboutToWait => {
+                if redraw_requested && !close_requested {
+                    window.request_redraw()
+                }
+                if close_requested {
+                    event_loop.exit()
+                }
             }
             _ => {}
-        })
+        })?)
     }
 }
 
@@ -99,6 +117,7 @@ impl Drop for PistonApp {
                     .destroy_debug_utils_messenger(self.debug_messenger, None);
             }
             self.device.destroy_device(None);
+            self.surface_loader.destroy_surface(self.surface, None);
             self.instance.destroy_instance(None);
         }
     }
@@ -113,10 +132,10 @@ fn main() -> Result<()> {
         vk_version_to_string(APPLICATION_VERSION),
         vk_version_to_string(VULKAN_API_VERSION)
     );
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new()?;
     let window = PistonApp::init_window(&event_loop);
 
     let piston_app = PistonApp::create_with_window(&window)?;
-    piston_app.main_loop(event_loop, window);
+    piston_app.main_loop(event_loop, window)?;
     Ok(())
 }
