@@ -1,6 +1,9 @@
 use anyhow::Result;
 use ash::extensions::ext::DebugUtils;
-use ash::vk::{DebugUtilsMessengerEXT, PhysicalDevice, Queue};
+use ash::extensions::khr::Swapchain;
+use ash::vk::{
+    DebugUtilsMessengerEXT, Extent2D, Format, Image, PhysicalDevice, Queue, SwapchainKHR,
+};
 use ash::{self, Device, Entry, Instance};
 use log::info;
 use winit::dpi::LogicalSize;
@@ -9,15 +12,13 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowBuilder};
 
-use piston::constants::{
-    APPLICATION_NAME, APPLICATION_VERSION, VALIDATION, VULKAN_API_VERSION, WINDOW_HEIGHT,
-    WINDOW_TITLE, WINDOW_WIDTH,
-};
+use piston::constants::*;
 use piston::util::debug::create_debug_utils;
 use piston::util::util::vk_version_to_string;
 use piston::vulkan::device::{create_logical_device, select_physical_device};
 use piston::vulkan::instance::create_instance;
 use piston::vulkan::surface::{create_surface, SurfaceEntities};
+use piston::vulkan::swapchain::create_swapchain;
 
 struct PistonApp {
     _entry: Entry,
@@ -29,6 +30,11 @@ struct PistonApp {
     surface_entities: SurfaceEntities,
     debug_utils_loader: DebugUtils,
     debug_messenger: DebugUtilsMessengerEXT,
+    swapchain_loader: Swapchain,
+    swapchain: SwapchainKHR,
+    _swapchain_format: Format,
+    _swapchain_images: Vec<Image>,
+    _swapchain_extent: Extent2D,
 }
 
 impl PistonApp {
@@ -37,20 +43,40 @@ impl PistonApp {
         let instance = create_instance(&entry, &VALIDATION)?;
         let surface_entities = create_surface(&entry, &instance, &window)?;
         let physical_device = select_physical_device(&instance, &surface_entities)?;
-        let (device, queues) = create_logical_device(&instance, physical_device, &surface_entities)?;
+        let (device, queue_family_indices) =
+            create_logical_device(&instance, physical_device, &surface_entities)?;
         let (debug_utils_loader, debug_messenger) =
             create_debug_utils(&entry, &instance, &VALIDATION)?;
+        let graphics_queue = unsafe {
+            device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0)
+        };
+        let present_queue = unsafe {
+            device.get_device_queue(queue_family_indices.present_family_index.unwrap(), 0)
+        };
+
+        let swapchain_entities = create_swapchain(
+            &instance,
+            &device,
+            physical_device,
+            &surface_entities,
+            &queue_family_indices,
+        )?;
 
         Ok(PistonApp {
             _entry: entry,
             instance,
             _physical_device: physical_device,
             device,
-            _graphics_queue: queues.graphics_queue,
-            _present_queue: queues.present_queue,
+            _graphics_queue: graphics_queue,
+            _present_queue: present_queue,
             surface_entities,
             debug_utils_loader,
             debug_messenger,
+            swapchain_loader: swapchain_entities.swapchain_loader,
+            swapchain: swapchain_entities.swapchain,
+            _swapchain_format: swapchain_entities.swapchain_format,
+            _swapchain_images: swapchain_entities.swapchain_images,
+            _swapchain_extent: swapchain_entities.swapchain_extent,
         })
     }
 
@@ -115,6 +141,7 @@ impl Drop for PistonApp {
                 self.debug_utils_loader
                     .destroy_debug_utils_messenger(self.debug_messenger, None);
             }
+            self.swapchain_loader.destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
             self.surface_entities
                 .surface_loader

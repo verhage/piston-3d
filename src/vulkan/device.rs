@@ -1,25 +1,22 @@
-use crate::constants::REQUIRED_EXTENSIONS;
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Result};
+use ash::extensions::khr::Swapchain;
 use ash::vk::{
-    DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, Queue,
-    QueueFlags,
+    DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, QueueFlags,
 };
 use ash::{vk, Device, Instance};
 use log::{debug, info};
-use std::collections::HashSet;
 use vk::PhysicalDeviceType;
 
+use crate::constants::REQUIRED_EXTENSIONS;
 use crate::util::util::{vk_to_string, vk_version_to_string, yes_no};
 use crate::vulkan::surface::SurfaceEntities;
+use crate::vulkan::swapchain::get_swapchain_support_details;
 
-pub struct Queues {
-    pub graphics_queue: Queue,
-    pub present_queue: Queue,
-}
-
-struct QueueFamilyIndices {
-    graphics_family_index: Option<u32>,
-    present_family_index: Option<u32>,
+pub struct QueueFamilyIndices {
+    pub graphics_family_index: Option<u32>,
+    pub present_family_index: Option<u32>,
 }
 
 impl QueueFamilyIndices {
@@ -58,7 +55,7 @@ pub fn create_logical_device(
     instance: &Instance,
     physical_device: PhysicalDevice,
     surface_entities: &SurfaceEntities,
-) -> Result<(Device, Queues)> {
+) -> Result<(Device, QueueFamilyIndices)> {
     let queue_family_indices = find_queue_family(instance, physical_device, surface_entities);
     let queue_priorities = [1.0f32];
     let queue_create_info = DeviceQueueCreateInfo::builder()
@@ -66,24 +63,16 @@ pub fn create_logical_device(
         .queue_priorities(&queue_priorities)
         .build();
     let physical_device_features = PhysicalDeviceFeatures::builder().build();
+    let enabled_extensions = [Swapchain::name().as_ptr()];
     let device_create_info = DeviceCreateInfo::builder()
         .queue_create_infos(&[queue_create_info])
+        .enabled_extension_names(&enabled_extensions)
         .enabled_features(&physical_device_features)
         .build();
 
     let device = unsafe { instance.create_device(physical_device, &device_create_info, None) }?;
-    let graphics_queue =
-        unsafe { device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0) };
-    let present_queue =
-        unsafe { device.get_device_queue(queue_family_indices.graphics_family_index.unwrap(), 0) };
 
-    Ok((
-        device,
-        Queues {
-            graphics_queue,
-            present_queue,
-        },
-    ))
+    Ok((device, queue_family_indices))
 }
 
 fn is_suitable_physical_device(
@@ -134,21 +123,8 @@ fn check_swapchain_support(
     physical_device: PhysicalDevice,
     surface_entities: &SurfaceEntities,
 ) -> bool {
-    let formats = unsafe {
-        surface_entities
-            .surface_loader
-            .get_physical_device_surface_formats(physical_device, surface_entities.surface)
-    }
-    .unwrap();
-
-    let present_modes = unsafe {
-        surface_entities
-            .surface_loader
-            .get_physical_device_surface_present_modes(physical_device, surface_entities.surface)
-    }
-    .unwrap();
-
-    !(formats.is_empty() || present_modes.is_empty())
+    let details = get_swapchain_support_details(physical_device, &surface_entities).unwrap();
+    !(details.formats.is_empty() || details.present_modes.is_empty())
 }
 
 fn check_queue_families(
