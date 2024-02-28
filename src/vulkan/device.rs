@@ -93,14 +93,17 @@ fn is_suitable_physical_device(
 ) -> bool {
     let queue_families_ok = check_queue_families(instance, physical_device, surface_wrapper);
     let extension_support_ok = check_extension_support(instance, physical_device);
+    let swap_chain_support_ok =
+        extension_support_ok && check_swap_chain_support(physical_device, surface_wrapper);
 
     info!("Queue families supported: {}", yes_no(queue_families_ok));
     info!(
         "Required extensions supported: {}",
         yes_no(extension_support_ok)
     );
+    info!("Swap chain supported: {}", yes_no(swap_chain_support_ok));
 
-    queue_families_ok && extension_support_ok
+    queue_families_ok && extension_support_ok && swap_chain_support_ok
 }
 
 fn check_extension_support(instance: &Instance, physical_device: PhysicalDevice) -> bool {
@@ -125,6 +128,27 @@ fn check_extension_support(instance: &Instance, physical_device: PhysicalDevice)
     }
 
     required_extensions.is_empty()
+}
+
+fn check_swap_chain_support(
+    physical_device: PhysicalDevice,
+    surface_wrapper: &SurfaceWrapper,
+) -> bool {
+    let formats = unsafe {
+        surface_wrapper
+            .surface_loader
+            .get_physical_device_surface_formats(physical_device, surface_wrapper.surface)
+    }
+    .unwrap();
+
+    let present_modes = unsafe {
+        surface_wrapper
+            .surface_loader
+            .get_physical_device_surface_present_modes(physical_device, surface_wrapper.surface)
+    }
+    .unwrap();
+
+    !(formats.is_empty() || present_modes.is_empty())
 }
 
 fn check_queue_families(
