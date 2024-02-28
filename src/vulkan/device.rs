@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use vk::PhysicalDeviceType;
 
 use crate::util::util::{vk_to_string, vk_version_to_string, yes_no};
-use crate::vulkan::surface::SurfaceWrapper;
+use crate::vulkan::surface::SurfaceEntities;
 
 pub struct Queues {
     pub graphics_queue: Queue,
@@ -37,7 +37,7 @@ impl QueueFamilyIndices {
 
 pub fn select_physical_device(
     instance: &Instance,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> Result<PhysicalDevice> {
     let physical_devices = unsafe { instance.enumerate_physical_devices() }?;
     info!(
@@ -46,7 +46,7 @@ pub fn select_physical_device(
     );
 
     for &physical_device in physical_devices.iter() {
-        if is_suitable_physical_device(instance, physical_device, surface_wrapper) {
+        if is_suitable_physical_device(instance, physical_device, surface_entities) {
             return Ok(physical_device);
         }
     }
@@ -57,9 +57,9 @@ pub fn select_physical_device(
 pub fn create_logical_device(
     instance: &Instance,
     physical_device: PhysicalDevice,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> Result<(Device, Queues)> {
-    let queue_family_indices = find_queue_family(instance, physical_device, surface_wrapper);
+    let queue_family_indices = find_queue_family(instance, physical_device, surface_entities);
     let queue_priorities = [1.0f32];
     let queue_create_info = DeviceQueueCreateInfo::builder()
         .queue_family_index(queue_family_indices.graphics_family_index.unwrap())
@@ -89,12 +89,12 @@ pub fn create_logical_device(
 fn is_suitable_physical_device(
     instance: &Instance,
     physical_device: PhysicalDevice,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> bool {
-    let queue_families_ok = check_queue_families(instance, physical_device, surface_wrapper);
+    let queue_families_ok = check_queue_families(instance, physical_device, surface_entities);
     let extension_support_ok = check_extension_support(instance, physical_device);
     let swap_chain_support_ok =
-        extension_support_ok && check_swap_chain_support(physical_device, surface_wrapper);
+        extension_support_ok && check_swap_chain_support(physical_device, surface_entities);
 
     info!("Queue families supported: {}", yes_no(queue_families_ok));
     info!(
@@ -132,19 +132,19 @@ fn check_extension_support(instance: &Instance, physical_device: PhysicalDevice)
 
 fn check_swap_chain_support(
     physical_device: PhysicalDevice,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> bool {
     let formats = unsafe {
-        surface_wrapper
+        surface_entities
             .surface_loader
-            .get_physical_device_surface_formats(physical_device, surface_wrapper.surface)
+            .get_physical_device_surface_formats(physical_device, surface_entities.surface)
     }
     .unwrap();
 
     let present_modes = unsafe {
-        surface_wrapper
+        surface_entities
             .surface_loader
-            .get_physical_device_surface_present_modes(physical_device, surface_wrapper.surface)
+            .get_physical_device_surface_present_modes(physical_device, surface_entities.surface)
     }
     .unwrap();
 
@@ -154,7 +154,7 @@ fn check_swap_chain_support(
 fn check_queue_families(
     instance: &Instance,
     physical_device: PhysicalDevice,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> bool {
     let device_properties = unsafe { instance.get_physical_device_properties(physical_device) };
     let device_features = unsafe { instance.get_physical_device_features(physical_device) };
@@ -201,13 +201,13 @@ fn check_queue_families(
         yes_no(device_features.geometry_shader == 1)
     );
 
-    find_queue_family(instance, physical_device, surface_wrapper).is_complete()
+    find_queue_family(instance, physical_device, surface_entities).is_complete()
 }
 
 fn find_queue_family(
     instance: &Instance,
     physical_device: PhysicalDevice,
-    surface_wrapper: &SurfaceWrapper,
+    surface_entities: &SurfaceEntities,
 ) -> QueueFamilyIndices {
     let mut queue_family_indices = QueueFamilyIndices::new();
 
@@ -222,12 +222,12 @@ fn find_queue_family(
             }
 
             let is_present_supported = unsafe {
-                surface_wrapper
+                surface_entities
                     .surface_loader
                     .get_physical_device_surface_support(
                         physical_device,
                         index,
-                        surface_wrapper.surface,
+                        surface_entities.surface,
                     )
             }
             .unwrap();

@@ -11,7 +11,7 @@ use metal::foreign_types::ForeignTypeRef;
 use metal::MetalLayer;
 use winit::window::Window;
 
-pub struct SurfaceWrapper {
+pub struct SurfaceEntities {
     pub surface_loader: Surface,
     pub surface: SurfaceKHR,
 }
@@ -20,11 +20,11 @@ pub fn create_surface(
     entry: &Entry,
     instance: &Instance,
     window: &Window,
-) -> Result<SurfaceWrapper> {
+) -> Result<SurfaceEntities> {
     let surface_loader = Surface::new(entry, instance);
     let surface = unsafe { create_macos_surface(entry, instance, window) }?;
 
-    Ok(SurfaceWrapper {
+    Ok(SurfaceEntities {
         surface_loader,
         surface,
     })
