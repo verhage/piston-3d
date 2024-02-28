@@ -1,9 +1,11 @@
 use anyhow::Result;
 use ash::extensions::khr::Swapchain;
 use ash::vk::{
-    ColorSpaceKHR, CompositeAlphaFlagsKHR, Extent2D, Format, Image, ImageUsageFlags,
-    PhysicalDevice, PresentModeKHR, SharingMode, SurfaceCapabilitiesKHR, SurfaceFormatKHR,
-    SwapchainCreateFlagsKHR, SwapchainCreateInfoKHR, SwapchainKHR,
+    ColorSpaceKHR, ComponentMapping, ComponentSwizzle, CompositeAlphaFlagsKHR, Extent2D, Format,
+    Image, ImageAspectFlags, ImageSubresourceRange, ImageUsageFlags, ImageView,
+    ImageViewCreateFlags, ImageViewCreateInfo, ImageViewType, PhysicalDevice, PresentModeKHR,
+    SharingMode, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainCreateFlagsKHR,
+    SwapchainCreateInfoKHR, SwapchainKHR,
 };
 use ash::{Device, Instance};
 use num_traits::clamp;
@@ -56,6 +58,69 @@ pub fn get_swapchain_support_details(
 }
 
 pub fn create_swapchain(
+    instance: &Instance,
+    device: &Device,
+    physical_device: PhysicalDevice,
+    surface_entities: &SurfaceEntities,
+    queue_family_indices: &QueueFamilyIndices,
+) -> Result<(SwapchainEntities, Vec<ImageView>)> {
+    let swapchain_entities = create_swapchain_entities(
+        instance,
+        device,
+        physical_device,
+        surface_entities,
+        queue_family_indices,
+    )?;
+    let swapchain_image_views = create_swapchain_image_views(
+        device,
+        swapchain_entities.swapchain_format,
+        &swapchain_entities.swapchain_images,
+    )?;
+
+    Ok((swapchain_entities, swapchain_image_views))
+}
+
+fn create_swapchain_image_views(
+    device: &Device,
+    surface_format: Format,
+    images: &Vec<Image>,
+) -> Result<Vec<ImageView>> {
+    let mut image_views = vec![];
+    for image in images {
+        image_views.push(create_image_view(device, surface_format, *image)?);
+    }
+
+    Ok(image_views)
+}
+
+fn create_image_view(device: &Device, surface_format: Format, image: Image) -> Result<ImageView> {
+    let image_view_create_info = ImageViewCreateInfo::builder()
+        .flags(ImageViewCreateFlags::empty())
+        .view_type(ImageViewType::TYPE_2D)
+        .format(surface_format)
+        .image(image)
+        .components(
+            ComponentMapping::builder()
+                .r(ComponentSwizzle::IDENTITY)
+                .g(ComponentSwizzle::IDENTITY)
+                .b(ComponentSwizzle::IDENTITY)
+                .a(ComponentSwizzle::IDENTITY)
+                .build(),
+        )
+        .subresource_range(
+            ImageSubresourceRange::builder()
+                .aspect_mask(ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(1)
+                .build(),
+        )
+        .build();
+    Ok(unsafe { device.create_image_view(&image_view_create_info, None) }?)
+}
+
+fn create_swapchain_entities(
     instance: &Instance,
     device: &Device,
     physical_device: PhysicalDevice,

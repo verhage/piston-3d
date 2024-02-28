@@ -2,7 +2,7 @@ use anyhow::Result;
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Swapchain;
 use ash::vk::{
-    DebugUtilsMessengerEXT, Extent2D, Format, Image, PhysicalDevice, Queue, SwapchainKHR,
+    DebugUtilsMessengerEXT, Extent2D, Format, Image, ImageView, PhysicalDevice, Queue, SwapchainKHR,
 };
 use ash::{self, Device, Entry, Instance};
 use log::info;
@@ -35,6 +35,7 @@ struct PistonApp {
     _swapchain_format: Format,
     _swapchain_images: Vec<Image>,
     _swapchain_extent: Extent2D,
+    swapchain_image_views: Vec<ImageView>,
 }
 
 impl PistonApp {
@@ -54,7 +55,7 @@ impl PistonApp {
             device.get_device_queue(queue_family_indices.present_family_index.unwrap(), 0)
         };
 
-        let swapchain_entities = create_swapchain(
+        let (swapchain_entities, swapchain_image_views) = create_swapchain(
             &instance,
             &device,
             physical_device,
@@ -77,6 +78,7 @@ impl PistonApp {
             _swapchain_format: swapchain_entities.swapchain_format,
             _swapchain_images: swapchain_entities.swapchain_images,
             _swapchain_extent: swapchain_entities.swapchain_extent,
+            swapchain_image_views,
         })
     }
 
@@ -141,7 +143,13 @@ impl Drop for PistonApp {
                 self.debug_utils_loader
                     .destroy_debug_utils_messenger(self.debug_messenger, None);
             }
-            self.swapchain_loader.destroy_swapchain(self.swapchain, None);
+
+            for &image_view in self.swapchain_image_views.iter() {
+                self.device.destroy_image_view(image_view, None);
+            }
+
+            self.swapchain_loader
+                .destroy_swapchain(self.swapchain, None);
             self.device.destroy_device(None);
             self.surface_entities
                 .surface_loader
