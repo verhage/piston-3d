@@ -58,14 +58,24 @@ pub fn create_logical_device(
 ) -> Result<(Device, QueueFamilyIndices)> {
     let queue_family_indices = find_queue_family(instance, physical_device, surface_entities);
     let queue_priorities = [1.0f32];
-    let queue_create_info = DeviceQueueCreateInfo::builder()
-        .queue_family_index(queue_family_indices.graphics_family_index.unwrap())
-        .queue_priorities(&queue_priorities)
+
+    let queue_create_infos = [
+        DeviceQueueCreateInfo::builder()
+            .queue_family_index(queue_family_indices.graphics_family_index.unwrap())
+            .queue_priorities(&queue_priorities)
+            .build(),
+        DeviceQueueCreateInfo::builder()
+            .queue_family_index(queue_family_indices.present_family_index.unwrap())
+            .queue_priorities(&queue_priorities)
+            .build(),
+    ];
+
+    let physical_device_features = PhysicalDeviceFeatures::builder()
+        .sampler_anisotropy(true)
         .build();
-    let physical_device_features = PhysicalDeviceFeatures::builder().build();
     let enabled_extensions = [Swapchain::name().as_ptr()];
     let device_create_info = DeviceCreateInfo::builder()
-        .queue_create_infos(&[queue_create_info])
+        .queue_create_infos(&queue_create_infos)
         .enabled_extension_names(&enabled_extensions)
         .enabled_features(&physical_device_features)
         .build();

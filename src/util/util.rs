@@ -1,5 +1,8 @@
 use ash::vk::{api_version_major, api_version_minor, api_version_patch};
 use std::ffi::{c_char, CStr};
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 pub fn vk_to_string(raw_string_array: &[c_char]) -> String {
     unsafe {
@@ -23,4 +26,11 @@ pub fn yes_no<'value>(value: bool) -> &'value str {
     } else {
         "no"
     }
+}
+
+pub fn load_file_bytes(file_path: &Path) -> Vec<u8> {
+    let file = File::open(file_path).expect(&format!("Error loading file {:?}", file_path));
+    file.bytes()
+        .filter_map(|b| b.ok().unwrap().into())
+        .collect()
 }

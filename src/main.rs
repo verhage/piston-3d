@@ -2,7 +2,8 @@ use anyhow::Result;
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Swapchain;
 use ash::vk::{
-    DebugUtilsMessengerEXT, Extent2D, Format, Image, ImageView, PhysicalDevice, Queue, SwapchainKHR,
+    DebugUtilsMessengerEXT, Extent2D, Format, Image, ImageView, PhysicalDevice, Pipeline,
+    PipelineLayout, Queue, RenderPass, SwapchainKHR,
 };
 use ash::{self, Device, Entry, Instance};
 use log::info;
@@ -17,6 +18,8 @@ use piston::util::debug::create_debug_utils;
 use piston::util::util::vk_version_to_string;
 use piston::vulkan::device::{create_logical_device, select_physical_device};
 use piston::vulkan::instance::create_instance;
+use piston::vulkan::pipeline::create_graphics_pipeline;
+use piston::vulkan::render::create_render_pass;
 use piston::vulkan::surface::{create_surface, SurfaceEntities};
 use piston::vulkan::swapchain::create_swapchain;
 
@@ -36,6 +39,9 @@ struct PistonApp {
     _swapchain_images: Vec<Image>,
     _swapchain_extent: Extent2D,
     swapchain_image_views: Vec<ImageView>,
+    render_pass: RenderPass,
+    pipeline_layout: PipelineLayout,
+    pipeline: Pipeline,
 }
 
 impl PistonApp {
@@ -63,6 +69,11 @@ impl PistonApp {
             &queue_family_indices,
         )?;
 
+        let render_pass = create_render_pass(&device, swapchain_entities.swapchain_format)?;
+
+        let (pipeline, pipeline_layout) =
+            create_graphics_pipeline(&device, render_pass, swapchain_entities.swapchain_extent)?;
+
         Ok(PistonApp {
             _entry: entry,
             instance,
@@ -79,6 +90,9 @@ impl PistonApp {
             _swapchain_images: swapchain_entities.swapchain_images,
             _swapchain_extent: swapchain_entities.swapchain_extent,
             swapchain_image_views,
+            render_pass,
+            pipeline_layout,
+            pipeline,
         })
     }
 
@@ -144,13 +158,20 @@ impl Drop for PistonApp {
                     .destroy_debug_utils_messenger(self.debug_messenger, None);
             }
 
+            self.device.destroy_pipeline(self.pipeline, None);
+            self.device
+                .destroy_pipeline_layout(self.pipeline_layout, None);
+            self.device.destroy_render_pass(self.render_pass, None);
+
             for &image_view in self.swapchain_image_views.iter() {
                 self.device.destroy_image_view(image_view, None);
             }
 
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);
+
             self.device.destroy_device(None);
+
             self.surface_entities
                 .surface_loader
                 .destroy_surface(self.surface_entities.surface, None);
