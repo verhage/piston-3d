@@ -3,24 +3,19 @@ use std::io::Cursor;
 use std::path::Path;
 
 use anyhow::Result;
-use ash::Device;
 use ash::util::read_spv;
 use ash::vk::{
     BlendFactor, BlendOp, ColorComponentFlags, CompareOp, CullModeFlags, Extent2D, FrontFace,
     GraphicsPipelineCreateInfo, LogicOp, Offset2D, Pipeline, PipelineCache,
-    PipelineColorBlendAttachmentState,
-    PipelineColorBlendStateCreateInfo,
-    PipelineDepthStencilStateCreateInfo,
-    PipelineInputAssemblyStateCreateInfo, PipelineLayout,
-    PipelineLayoutCreateInfo,
-    PipelineMultisampleStateCreateInfo,
-    PipelineRasterizationStateCreateInfo,
-    PipelineShaderStageCreateInfo,
-    PipelineVertexInputStateCreateInfo,
-    PipelineViewportStateCreateInfo, PolygonMode, PrimitiveTopology, Rect2D, RenderPass,
-    SampleCountFlags, ShaderModule, ShaderModuleCreateInfo, StencilOp,
-    StencilOpState, Viewport,
+    PipelineColorBlendAttachmentState, PipelineColorBlendStateCreateInfo,
+    PipelineDepthStencilStateCreateInfo, PipelineInputAssemblyStateCreateInfo, PipelineLayout,
+    PipelineLayoutCreateInfo, PipelineMultisampleStateCreateInfo,
+    PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
+    PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PolygonMode,
+    PrimitiveTopology, Rect2D, RenderPass, SampleCountFlags, ShaderModule, ShaderModuleCreateInfo,
+    StencilOp, StencilOpState, Viewport,
 };
+use ash::Device;
 
 use crate::util::util::load_file_bytes;
 
@@ -29,8 +24,10 @@ pub fn create_graphics_pipeline(
     render_pass: RenderPass,
     swapchain_extent: Extent2D,
 ) -> Result<(Pipeline, PipelineLayout)> {
-    let mut vertex_shader_file = Cursor::new(load_file_bytes(Path::new("shaders/build/vert-shader.spv")));
-    let mut fragment_shader_file = Cursor::new(load_file_bytes(Path::new("shaders/build/frag-shader.spv")));
+    let mut vertex_shader_file =
+        Cursor::new(load_file_bytes(Path::new("shaders/build/vert-shader.spv")));
+    let mut fragment_shader_file =
+        Cursor::new(load_file_bytes(Path::new("shaders/build/frag-shader.spv")));
 
     let vertex_shader_code = read_spv(&mut vertex_shader_file)?;
     let fragment_shader_code = read_spv(&mut fragment_shader_file)?;
@@ -40,7 +37,7 @@ pub fn create_graphics_pipeline(
 
     let main_function = CString::new("main").unwrap();
 
-    let shader_stages_create_info= [
+    let shader_stages_create_info = [
         create_pipeline_shader_stage_create_info(&main_function, vertex_shader_module),
         create_pipeline_shader_stage_create_info(&main_function, fragment_shader_module),
     ];
@@ -73,7 +70,8 @@ pub fn create_graphics_pipeline(
             &graphics_pipeline_create_infos,
             None,
         )
-    }.unwrap();
+    }
+    .unwrap();
 
     unsafe {
         device.destroy_shader_module(vertex_shader_module, None);
@@ -84,9 +82,7 @@ pub fn create_graphics_pipeline(
 }
 
 fn create_shader_module(device: &Device, shader_code: Vec<u32>) -> Result<ShaderModule> {
-    let shader_module_create_info = ShaderModuleCreateInfo::builder()
-        .code(&shader_code)
-        .build();
+    let shader_module_create_info = ShaderModuleCreateInfo::builder().code(&shader_code).build();
 
     Ok(unsafe { device.create_shader_module(&shader_module_create_info, None) }?)
 }

@@ -18,6 +18,6 @@ pub const WINDOW_WIDTH: u32 = 1024;
 pub const WINDOW_HEIGHT: u32 = 768;
 
 pub const VALIDATION: ValidationInfo = ValidationInfo {
-    is_enabled: false,
-    required_validation_layer: "VK_LAYER_KHRONOS_validation",
+    is_enabled: true,
+    required_validation_layers: ["VK_LAYER_KHRONOS_validation"],
 };

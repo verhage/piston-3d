@@ -46,7 +46,7 @@ struct PistonApp {
 
 impl PistonApp {
     fn create_with_window(window: &Window) -> Result<PistonApp> {
-        let entry = unsafe { ash::Entry::load() }?;
+        let entry = unsafe { Entry::load() }?;
         let instance = create_instance(&entry, &VALIDATION)?;
         let surface_entities = create_surface(&entry, &instance, &window)?;
         let physical_device = select_physical_device(&instance, &surface_entities)?;

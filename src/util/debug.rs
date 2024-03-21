@@ -11,7 +11,7 @@ use std::ffi::CStr;
 
 pub struct ValidationInfo {
     pub is_enabled: bool,
-    pub required_validation_layer: &'static str,
+    pub required_validation_layers: [&'static str; 1],
 }
 
 pub fn create_debug_utils(
@@ -29,7 +29,7 @@ pub fn create_debug_utils(
     Ok((debug_utils_loader, debug_messenger))
 }
 
-fn create_debug_info() -> DebugUtilsMessengerCreateInfoEXT {
+pub fn create_debug_info() -> DebugUtilsMessengerCreateInfoEXT {
     DebugUtilsMessengerCreateInfoEXT::builder()
         .message_severity(
             DebugUtilsMessageSeverityFlagsEXT::ERROR
