@@ -38,7 +38,8 @@ pub fn create_instance(
         Surface::name().as_ptr(),
     ];
 
-    let required_validation_layer_names :Vec<CString> = validation_info.required_validation_layers
+    let required_validation_layer_names: Vec<CString> = validation_info
+        .required_validation_layers
         .to_vec()
         .iter()
         .map(|layer_name| CString::new(*layer_name).unwrap())

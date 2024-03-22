@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use anyhow::{anyhow, Result};
 use ash::extensions::khr::Swapchain;
 use ash::vk::{
-    DeviceCreateInfo, DeviceQueueCreateInfo, PhysicalDevice, PhysicalDeviceFeatures, QueueFlags,
+    DeviceCreateInfo, DeviceQueueCreateInfo, KhrPortabilitySubsetFn, PhysicalDevice,
+    PhysicalDeviceFeatures, QueueFlags,
 };
 use ash::{vk, Device, Instance};
 use log::{debug, info};
@@ -29,6 +30,13 @@ impl QueueFamilyIndices {
 
     pub fn is_complete(&self) -> bool {
         self.graphics_family_index.is_some() && self.present_family_index.is_some()
+    }
+
+    pub fn unique_indices(&self) -> HashSet<u32> {
+        let mut unique_indices = HashSet::new();
+        unique_indices.insert(self.graphics_family_index.unwrap());
+        unique_indices.insert(self.present_family_index.unwrap());
+        unique_indices
     }
 }
 
@@ -58,22 +66,23 @@ pub fn create_logical_device(
 ) -> Result<(Device, QueueFamilyIndices)> {
     let queue_family_indices = find_queue_family(instance, physical_device, surface_entities);
     let queue_priorities = [1.0f32];
-
-    let queue_create_infos = [
-        DeviceQueueCreateInfo::builder()
-            .queue_family_index(queue_family_indices.graphics_family_index.unwrap())
-            .queue_priorities(&queue_priorities)
-            .build(),
-        DeviceQueueCreateInfo::builder()
-            .queue_family_index(queue_family_indices.present_family_index.unwrap())
-            .queue_priorities(&queue_priorities)
-            .build(),
-    ];
+    let mut queue_create_infos = vec![];
+    for &index in queue_family_indices.unique_indices().iter() {
+        queue_create_infos.push(
+            DeviceQueueCreateInfo::builder()
+                .queue_family_index(index)
+                .queue_priorities(&queue_priorities)
+                .build(),
+        )
+    }
 
     let physical_device_features = PhysicalDeviceFeatures::builder()
         .sampler_anisotropy(true)
         .build();
-    let enabled_extensions = [Swapchain::name().as_ptr()];
+    let enabled_extensions = [
+        Swapchain::name().as_ptr(),
+        KhrPortabilitySubsetFn::name().as_ptr(),
+    ];
     let device_create_info = DeviceCreateInfo::builder()
         .queue_create_infos(&queue_create_infos)
         .enabled_extension_names(&enabled_extensions)

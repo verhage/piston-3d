@@ -67,6 +67,7 @@ impl PistonApp {
             physical_device,
             &surface_entities,
             &queue_family_indices,
+            window,
         )?;
 
         let render_pass = create_render_pass(&device, swapchain_entities.swapchain_format)?;

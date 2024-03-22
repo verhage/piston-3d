@@ -13,7 +13,7 @@ use ash::vk::{
     PipelineRasterizationStateCreateInfo, PipelineShaderStageCreateInfo,
     PipelineVertexInputStateCreateInfo, PipelineViewportStateCreateInfo, PolygonMode,
     PrimitiveTopology, Rect2D, RenderPass, SampleCountFlags, ShaderModule, ShaderModuleCreateInfo,
-    StencilOp, StencilOpState, Viewport,
+    ShaderStageFlags, StencilOp, StencilOpState, Viewport,
 };
 use ash::Device;
 
@@ -38,13 +38,39 @@ pub fn create_graphics_pipeline(
     let main_function = CString::new("main").unwrap();
 
     let shader_stages_create_info = [
-        create_pipeline_shader_stage_create_info(&main_function, vertex_shader_module),
-        create_pipeline_shader_stage_create_info(&main_function, fragment_shader_module),
+        create_pipeline_shader_stage_create_info(
+            &main_function,
+            vertex_shader_module,
+            ShaderStageFlags::VERTEX,
+        ),
+        create_pipeline_shader_stage_create_info(
+            &main_function,
+            fragment_shader_module,
+            ShaderStageFlags::FRAGMENT,
+        ),
     ];
+
+    let viewports = [Viewport::builder()
+        .x(0.0)
+        .y(0.0)
+        .width(swapchain_extent.width as f32)
+        .height(swapchain_extent.height as f32)
+        .min_depth(0.0)
+        .max_depth(0.0)
+        .build()];
+
+    let scissors = [Rect2D::builder()
+        .offset(Offset2D::builder().x(0).y(0).build())
+        .extent(swapchain_extent)
+        .build()];
+
+    let viewport_state_create_info = PipelineViewportStateCreateInfo::builder()
+        .scissors(&scissors)
+        .viewports(&viewports)
+        .build();
 
     let vertex_input_state_create_info = create_vertex_input_state_create_info();
     let input_assembly_state_create_info = create_input_assembly_state_create_info();
-    let viewport_state_create_info = create_viewport_state_create_info(swapchain_extent);
     let rasterization_state_create_info = create_rasterization_state_create_info();
     let multisample_state_create_info = create_multisample_state_create_info();
     let depth_stencil_state_create_info = create_depth_stencil_state_create_info();
@@ -90,10 +116,12 @@ fn create_shader_module(device: &Device, shader_code: Vec<u32>) -> Result<Shader
 fn create_pipeline_shader_stage_create_info(
     main_function_name: &CString,
     shader_module: ShaderModule,
+    stage: ShaderStageFlags,
 ) -> PipelineShaderStageCreateInfo {
     PipelineShaderStageCreateInfo::builder()
         .module(shader_module)
         .name(main_function_name)
+        .stage(stage)
         .build()
 }
 
@@ -105,25 +133,6 @@ fn create_input_assembly_state_create_info() -> PipelineInputAssemblyStateCreate
     PipelineInputAssemblyStateCreateInfo::builder()
         .primitive_restart_enable(false)
         .topology(PrimitiveTopology::TRIANGLE_LIST)
-        .build()
-}
-
-fn create_viewport_state_create_info(extent: Extent2D) -> PipelineViewportStateCreateInfo {
-    let viewports = [Viewport::builder()
-        .x(0.0)
-        .y(0.0)
-        .width(extent.width as f32)
-        .height(extent.height as f32)
-        .build()];
-
-    let scissors = [Rect2D::builder()
-        .offset(Offset2D::builder().x(0).y(0).build())
-        .extent(extent)
-        .build()];
-
-    PipelineViewportStateCreateInfo::builder()
-        .viewports(&viewports)
-        .scissors(&scissors)
         .build()
 }
 
@@ -168,7 +177,6 @@ fn create_depth_stencil_state_create_info() -> PipelineDepthStencilStateCreateIn
         .depth_write_enable(false)
         .depth_compare_op(CompareOp::LESS_OR_EQUAL)
         .depth_bounds_test_enable(false)
-        .stencil_test_enable(false)
         .front(stencil_state)
         .back(stencil_state)
         .max_depth_bounds(1.0)

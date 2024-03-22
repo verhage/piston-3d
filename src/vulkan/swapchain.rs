@@ -8,9 +8,10 @@ use ash::vk::{
     SwapchainCreateInfoKHR, SwapchainKHR,
 };
 use ash::{Device, Instance};
+use log::info;
 use num_traits::clamp;
+use winit::window::Window;
 
-use crate::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use crate::vulkan::device::QueueFamilyIndices;
 use crate::vulkan::surface::SurfaceEntities;
 
@@ -63,6 +64,7 @@ pub fn create_swapchain(
     physical_device: PhysicalDevice,
     surface_entities: &SurfaceEntities,
     queue_family_indices: &QueueFamilyIndices,
+    window: &Window,
 ) -> Result<(SwapchainEntities, Vec<ImageView>)> {
     let swapchain_entities = create_swapchain_entities(
         instance,
@@ -70,6 +72,7 @@ pub fn create_swapchain(
         physical_device,
         surface_entities,
         queue_family_indices,
+        window,
     )?;
     let swapchain_image_views = create_swapchain_image_views(
         device,
@@ -126,12 +129,13 @@ fn create_swapchain_entities(
     physical_device: PhysicalDevice,
     surface_entities: &SurfaceEntities,
     queue_family_indices: &QueueFamilyIndices,
+    window: &Window,
 ) -> Result<SwapchainEntities> {
     let swapchain_support_details =
         get_swapchain_support_details(physical_device, surface_entities)?;
     let surface_format = select_surface_format(&swapchain_support_details.formats);
     let present_mode = select_present_mode(&swapchain_support_details.present_modes);
-    let extent = select_swapchain_extent(&swapchain_support_details.capabilities);
+    let extent = select_swapchain_extent(&swapchain_support_details.capabilities, window);
 
     let image_count = swapchain_support_details.capabilities.min_image_count + 1;
     let image_count = if swapchain_support_details.capabilities.max_image_count > 1 {
@@ -207,18 +211,23 @@ fn select_present_mode(present_modes: &Vec<PresentModeKHR>) -> PresentModeKHR {
     PresentModeKHR::FIFO
 }
 
-fn select_swapchain_extent(capabilities: &SurfaceCapabilitiesKHR) -> Extent2D {
+fn select_swapchain_extent(capabilities: &SurfaceCapabilitiesKHR, window: &Window) -> Extent2D {
     if capabilities.current_extent.width != u32::MAX {
         capabilities.current_extent
     } else {
+        let window_size = window.inner_size();
+        info!(
+            "Inner window size: ({}, {})",
+            window_size.width, window_size.height
+        );
         Extent2D {
             width: clamp(
-                WINDOW_WIDTH,
+                window_size.width,
                 capabilities.current_extent.width,
                 capabilities.current_extent.height,
             ),
             height: clamp(
-                WINDOW_HEIGHT,
+                window_size.height,
                 capabilities.current_extent.height,
                 capabilities.current_extent.height,
             ),
